@@ -18,16 +18,20 @@ import { useState } from "react";
 //   );
 // }
 
-function Square({ value, onSquareClick }) {
+function Square({ value, onSquareClick, winner }) {
   return (
-    <button className="square" onClick={onSquareClick}>
+    <button
+      className="square"
+      onClick={onSquareClick}
+      style={{ color: winner ? "green" : "" }}
+    >
       {value}
     </button>
   );
 }
 
 // function Board() {
-function Board({ xIsNext, squares, onPlay }) {
+function Board({ xIsNext, squares, onPlay, draw }) {
   // const [squares, setSquares] = useState(Array(9).fill(null));
   // const [isXTurn, setIsXTurn] = useState(true);
 
@@ -83,7 +87,9 @@ function Board({ xIsNext, squares, onPlay }) {
   const winner = calculateWinner(squares);
   let status;
   if (winner) {
-    status = "Winner: " + winner;
+    status = "Winner: " + winner?.value;
+  } else if (draw) {
+    status = "Match is draw";
   } else {
     status = "Next player: " + (xIsNext ? "X" : "O");
   }
@@ -92,6 +98,11 @@ function Board({ xIsNext, squares, onPlay }) {
     <Square
       value={squares[index]}
       index={index}
+      winner={
+        calculateWinner(squares)
+          ? calculateWinner(squares).line.findIndex((x) => x === index) !== -1
+          : false
+      }
       onSquareClick={() => handleClick(index)}
     />
   );
@@ -207,8 +218,9 @@ export default function Game() {
 
   const handlePlay = (nextSquares) => {
     const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
+    const movesAsc = movesHistory.toSorted((a, b) => a - b);
     const nextMovesHistory = [
-      ...movesHistory.slice(0, currentMove + 1),
+      ...movesAsc.slice(0, currentMove + 1),
       currentMove + 1,
     ];
     // const nextMoveHistory = [
@@ -218,7 +230,11 @@ export default function Game() {
     // setHistory([...history, nextSquares]);
     setHistory(nextHistory);
     setCurrentMove(nextHistory.length - 1);
-    setMovesHistory(nextMovesHistory);
+
+    const sorted = !sortDesc
+      ? nextMovesHistory.toSorted((a, b) => b - a)
+      : nextMovesHistory.toSorted((a, b) => a - b);
+    setMovesHistory(sorted);
     // setXIsNext(!xIsNext);
     // setMovesHistory(nextMoveHistory);
   };
@@ -256,7 +272,12 @@ export default function Game() {
   return (
     <div className="game">
       <div className="game-board">
-        <Board xIsNext={xIsNext} squares={currentSquares} onPlay={handlePlay} />
+        <Board
+          xIsNext={xIsNext}
+          squares={currentSquares}
+          onPlay={handlePlay}
+          draw={movesHistory.length - 1 === 9}
+        />
       </div>
       <div className="game-info">
         <ol>{moves}</ol>
@@ -282,7 +303,10 @@ function calculateWinner(squares) {
   for (let i = 0; i < lines.length; i++) {
     const [a, b, c] = lines[i];
     if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-      return squares[a];
+      return {
+        value: squares[a],
+        line: lines[i],
+      };
     }
   }
   return null;
